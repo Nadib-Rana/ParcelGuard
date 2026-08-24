@@ -51,9 +51,9 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Card({ children, className = "", onClick }: { children: ReactNode; className?: string; onClick?: () => void }) {
   return (
-    <div className={`bg-white border border-slate-200 rounded-xl ${className}`}>
+    <div onClick={onClick} className={`bg-white border border-slate-200 rounded-xl ${className}`}>
       {children}
     </div>
   );
@@ -80,7 +80,7 @@ export function Button({ children, variant = "primary", size = "md", onClick, cl
   disabled?: boolean;
   type?: "button" | "submit";
 }) {
-  const base = "inline-flex items-center gap-1.5 font-medium rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed";
+  const base = "inline-flex items-center gap-1.5 font-medium rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer";
   const sizes = { sm: "px-3 py-1.5 text-xs", md: "px-4 py-2 text-sm" };
   const variants = {
     primary: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm",

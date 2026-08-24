@@ -1,13 +1,14 @@
 {
-  "name": "figma-make-app",
+  "name": "parcelguard",
   "private": true,
   "version": "1.0.0",
+  "description": "Smart Courier Intelligence & Fraud Prevention Platform for E-Commerce Merchants",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "format": "oxfmt"
+    "lint": "oxfmt"
   },
   "dependencies": {
     "lucide-react": "^1.33.0",
