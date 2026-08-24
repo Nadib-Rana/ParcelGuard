@@ -1,62 +1,54 @@
 # ParcelGuard 📦🛡️
 
-ParcelGuard is a modern, comprehensive courier and parcel fraud detection & management platform built with React, Vite, and Tailwind CSS.
+Smart Courier Intelligence & Logistics Fraud Prevention Platform for Bangladeshi E-Commerce & F-Commerce Merchants.
 
-## Features 🚀
+🚀 **Live Production URL:** [https://parcelguard-sigma.vercel.app](https://parcelguard-sigma.vercel.app)
 
-- **Dashboard**: Real-time insights, analytics charts, status distribution, and courier performance.
-- **Fraud Checker**: AI-powered fraud risk assessment and detection for parcel deliveries and customer phone numbers.
-- **Parcel Management**: Book parcels, track real-time status, manage deliveries, and perform bulk CSV uploads.
-- **Live Tracking**: Timeline-based shipment tracking across multiple courier services.
-- **Courier Accounts Integration**: Multi-courier integration (e.g. Steadfast, Pathao, RedX, Paperfly).
-- **Customer Directory**: Customer history, delivery success rates, and risk profiles.
-- **Payments & COD Reconciliation**: Track cash on delivery, merchant payouts, and invoices.
-- **Reports & Analytics**: Comprehensive delivery rate reports, courier comparisons, and financial summaries.
-- **Subscriptions & Billing**: Flexible pricing plans and billing history.
-- **Settings & Notifications**: Customizable notification triggers, SMS/Email alerts, and account preferences.
+---
+
+## Portals & Quick Access 🔑
+
+- **Merchant Portal:** [https://parcelguard-sigma.vercel.app/](https://parcelguard-sigma.vercel.app/)
+  - *Demo Login:* Click "Merchant Demo" or use `merchant@store.bd`
+- **Super Admin Console:** [https://parcelguard-sigma.vercel.app/admin](https://parcelguard-sigma.vercel.app/admin)
+  - *Admin Login:* Click "Admin Demo" or use `admin@parcelguard.com`
+
+---
+
+## Core Features ⚡
+
+- **AI Fraud Engine:** Dynamic telephone reputation scoring ($0-100$) and nationwide blacklist intelligence.
+- **Multi-Courier Booking:** Live rate calculator and auto-dispatch across Steadfast, Pathao, RedX, and Paperfly.
+- **Thermal Label Generator:** High-resolution 4x6, 100x150mm, and A4 printable barcode shipping labels.
+- **Bulk Upload & Inline Fixer:** Drag-and-drop CSV importer with error validation and inline cell fixer.
+- **Super Admin Platform Console:** Platform MRR telemetry, merchant tenant manager, courier health monitoring, and global broadcast dispatcher.
+- **COD Settlement Reconciliation:** Discrepancy detector and dispute claims manager.
+
+---
 
 ## Tech Stack 💻
 
-- **Framework**: React 19 + TypeScript + Vite
-- **Styling**: Tailwind CSS v4
-- **Icons**: Lucide React
-- **Charts**: Recharts
-- **Routing**: React Router v7
+- **Framework:** React 19 + TypeScript + Vite 8
+- **Styling:** Tailwind CSS v4 (`@tailwindcss/vite`)
+- **State Management:** React Context API + LocalStorage persistence
+- **Charts & Icons:** Recharts & Lucide React
+- **Deployment:** Vercel (SPA rewrite optimized)
 
-## Getting Started 🛠️
+---
 
-### Prerequisites
+## Local Development 🛠️
 
-- Node.js (v18+ recommended)
-- pnpm / npm / yarn
+```bash
+# Clone repository
+git clone https://github.com/Nadib-Rana/ParcelGuard.git
+cd ParcelGuard
 
-### Installation
+# Install dependencies
+npm install
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Nadib-Rana/ParcelGuard.git
-   cd ParcelGuard
-   ```
+# Run local development server
+npm run dev
 
-2. Install dependencies:
-   ```bash
-   npm install
-   # or
-   pnpm install
-   ```
-
-3. Start the development server:
-   ```bash
-   npm run dev
-   # or
-   pnpm dev
-   ```
-
-4. Build for production:
-   ```bash
-   npm run build
-   ```
-
-## License
-
-This project is private and proprietary.
+# Build production bundle
+npm run build
+```
