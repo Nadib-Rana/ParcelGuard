@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Download, Calendar } from "lucide-react";
+import { Download, Calendar, TrendingUp, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
+import { useData } from "../context/DataContext";
 import { Card, Button } from "../components/ui";
 
 const deliveryData = [
@@ -33,39 +34,60 @@ const districts = [
 const ranges = ["Today", "Last 7 Days", "Last 30 Days", "Custom Range"];
 
 export default function Reports() {
+  const { parcels, exportParcelsCSV } = useData();
   const [range, setRange] = useState("Last 30 Days");
+
+  const totalDelivered = parcels.filter(p => p.status === "Delivered").length;
+  const totalReturned = parcels.filter(p => p.status === "Returned").length;
+  const deliverySuccessRate = ((totalDelivered / Math.max(1, parcels.length)) * 100).toFixed(1);
+  const returnRate = ((totalReturned / Math.max(1, parcels.length)) * 100).toFixed(1);
+
+  const handleExportReport = () => {
+    exportParcelsCSV();
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-screen-xl">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Reports & Analytics</h1>
-          <p className="text-sm text-slate-500 mt-0.5">In-depth insights on your delivery performance.</p>
+          <h1 className="text-xl font-bold text-slate-900">Reports & Delivery Analytics</h1>
+          <p className="text-sm text-slate-500 mt-0.5">In-depth insights on your courier performance, return ratios, and COD volumes.</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg">
             {ranges.map(r => (
-              <button key={r} onClick={() => setRange(r)} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${range === r ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap ${
+                  range === r ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
                 {r}
               </button>
             ))}
           </div>
-          <Button variant="secondary" size="sm"><Download size={13} /> Export</Button>
+          <Button variant="secondary" size="sm" onClick={handleExportReport}>
+            <Download size={13} /> Export Analytics CSV
+          </Button>
         </div>
       </div>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: "Delivery Success Rate", value: "78.7%", trend: "↑ 2.1% vs last month", color: "text-emerald-600" },
-          { label: "Return Rate", value: "6.8%", trend: "↓ 0.5% vs last month", color: "text-emerald-600" },
-          { label: "Avg Delivery Time", value: "2.4 Days", trend: "↑ 0.2 days vs last month", color: "text-amber-600" },
-          { label: "COD Collection Rate", value: "94.2%", trend: "↑ 1.3% vs last month", color: "text-emerald-600" },
+          { label: "Delivery Success Rate", value: `${deliverySuccessRate}%`, trend: "↑ 2.1% vs last month", color: "text-emerald-600", icon: CheckCircle2 },
+          { label: "Return Rate", value: `${returnRate}%`, trend: "↓ 0.5% vs last month", color: "text-emerald-600", icon: AlertTriangle },
+          { label: "Avg Delivery Time", value: "2.4 Days", trend: "↑ 0.2 days vs last month", color: "text-amber-600", icon: Calendar },
+          { label: "COD Collection Rate", value: "94.2%", trend: "↑ 1.3% vs last month", color: "text-emerald-600", icon: TrendingUp },
         ].map(k => (
           <Card key={k.label} className="p-4">
-            <p className="text-xs font-semibold text-slate-500">{k.label}</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{k.value}</p>
-            <p className={`text-xs font-medium mt-1 ${k.color}`}>{k.trend}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500">{k.label}</p>
+              <k.icon size={16} className="text-slate-400" />
+            </div>
+            <p className="text-2xl font-black text-slate-900 mt-1">{k.value}</p>
+            <p className={`text-xs font-bold mt-1 ${k.color}`}>{k.trend}</p>
           </Card>
         ))}
       </div>
@@ -73,7 +95,7 @@ export default function Reports() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         {/* Delivery chart */}
         <Card className="p-5">
-          <h2 className="font-semibold text-slate-900 mb-4">Delivery Performance</h2>
+          <h2 className="font-bold text-slate-900 text-sm mb-4">Monthly Delivery vs Return Volume</h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={deliveryData} margin={{ left: -20, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -90,7 +112,7 @@ export default function Reports() {
 
         {/* COD trend */}
         <Card className="p-5">
-          <h2 className="font-semibold text-slate-900 mb-4">COD Collection Trend</h2>
+          <h2 className="font-bold text-slate-900 text-sm mb-4">Monthly COD Collection Volume (BDT)</h2>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={codData} margin={{ left: -10, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -104,7 +126,7 @@ export default function Reports() {
 
         {/* Courier performance */}
         <Card className="p-5">
-          <h2 className="font-semibold text-slate-900 mb-4">Courier Share</h2>
+          <h2 className="font-bold text-slate-900 text-sm mb-4">Courier Distribution Share</h2>
           <div className="flex items-center gap-6">
             <ResponsiveContainer width={180} height={180}>
               <PieChart>
@@ -113,12 +135,14 @@ export default function Reports() {
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1">
               {courierPie.map(c => (
-                <div key={c.name} className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: c.color }} />
-                  <span className="text-sm text-slate-700">{c.name}</span>
-                  <span className="text-sm font-bold text-slate-900 ml-auto">{c.value}%</span>
+                <div key={c.name} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: c.color }} />
+                    <span className="font-medium text-slate-700">{c.name}</span>
+                  </div>
+                  <span className="font-bold text-slate-900">{c.value}%</span>
                 </div>
               ))}
             </div>
@@ -127,13 +151,13 @@ export default function Reports() {
 
         {/* Top districts */}
         <Card className="p-5">
-          <h2 className="font-semibold text-slate-900 mb-4">Top Districts by Orders</h2>
+          <h2 className="font-bold text-slate-900 text-sm mb-4">Top Delivery Districts</h2>
           <div className="space-y-3">
             {districts.map(d => (
               <div key={d.name}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-slate-700">{d.name}</span>
-                  <span className="text-sm font-bold text-slate-900">{d.orders}</span>
+                  <span className="text-xs font-semibold text-slate-700">{d.name}</span>
+                  <span className="text-xs font-bold text-slate-900">{d.orders} orders</span>
                 </div>
                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(d.orders / 421) * 100}%` }} />
