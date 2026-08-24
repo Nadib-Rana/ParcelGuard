@@ -1,57 +1,19 @@
 import { useState } from "react";
-import { Wallet, TrendingUp, Clock, AlertTriangle, Filter, Download, X, Check, ShieldAlert, FileText } from "lucide-react";
+import { Wallet, TrendingUp, Clock, AlertTriangle, Download } from "lucide-react";
 import { useData, type Settlement } from "../context/DataContext";
-import { Card, StatCard, StatusBadge, Button, Badge } from "../components/ui";
+import { Card, StatCard, StatusBadge, Button } from "../components/ui";
+import SettlementModal from "../components/payments/SettlementModal";
+import DisputeModal from "../components/payments/DisputeModal";
 
 export default function Payments() {
-  const { settlements, raiseDispute } = useData();
+  const { settlements, raiseDispute, exportSettlementsCSV } = useData();
 
   const [selectedSettlement, setSelectedSettlement] = useState<Settlement | null>(null);
   const [disputeSettlement, setDisputeSettlement] = useState<Settlement | null>(null);
-  const [disputeReason, setDisputeReason] = useState("");
-  const [disputeAmount, setDisputeAmount] = useState("");
-  const [disputeSent, setDisputeSent] = useState(false);
 
   const totalCollected = settlements.reduce((acc, s) => acc + (s.status === "Paid" ? s.received : 0), 1250000);
   const pendingSettlement = settlements.filter(s => s.status === "Pending").reduce((acc, s) => acc + s.expected, 0);
   const disputedSettlements = settlements.filter(s => s.status === "Disputed" || s.diff < 0);
-
-  const handleRaiseDispute = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!disputeSettlement) return;
-
-    raiseDispute(disputeSettlement.id, disputeReason, disputeAmount ? Number(disputeAmount) : undefined);
-    setDisputeSent(true);
-    setTimeout(() => {
-      setDisputeSent(false);
-      setDisputeSettlement(null);
-      setDisputeReason("");
-      setDisputeAmount("");
-    }, 1500);
-  };
-
-  const exportSettlementsCSV = () => {
-    const headers = ["Settlement ID", "Courier", "Period", "Expected (BDT)", "Received (BDT)", "Difference (BDT)", "Status", "Parcels Count"];
-    const rows = settlements.map(s => [
-      s.id,
-      s.courier,
-      `"${s.period}"`,
-      s.expected,
-      s.received,
-      s.diff,
-      s.status,
-      s.parcelsCount,
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `parcelguard_settlements_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return (
     <div className="p-6 space-y-6 max-w-screen-xl">
@@ -104,10 +66,7 @@ export default function Payments() {
             <Button
               variant="danger"
               size="sm"
-              onClick={() => {
-                setDisputeSettlement(disputedSettlements[0]);
-                setDisputeAmount(String(Math.abs(disputedSettlements[0].diff)));
-              }}
+              onClick={() => setDisputeSettlement(disputedSettlements[0])}
             >
               Raise Dispute
             </Button>
@@ -158,10 +117,7 @@ export default function Payments() {
                         <Button
                           variant="danger"
                           size="sm"
-                          onClick={() => {
-                            setDisputeSettlement(s);
-                            setDisputeAmount(String(Math.abs(s.diff)));
-                          }}
+                          onClick={() => setDisputeSettlement(s)}
                         >
                           Dispute
                         </Button>
@@ -175,138 +131,21 @@ export default function Payments() {
         </div>
       </Card>
 
-      {/* Settlement Breakdown Modal */}
+      {/* Breakdown Modal */}
       {selectedSettlement && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/50" onClick={() => setSelectedSettlement(null)} />
-          <Card className="relative z-10 w-full max-w-xl p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-              <div>
-                <span className="text-xs font-mono font-bold text-indigo-600">{selectedSettlement.id}</span>
-                <h2 className="font-bold text-slate-900 text-base">{selectedSettlement.courier} Settlement Breakdown</h2>
-              </div>
-              <button onClick={() => setSelectedSettlement(null)} className="text-slate-400 hover:text-slate-600">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="bg-slate-50 p-3 rounded-xl">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase">Expected COD</p>
-                  <p className="text-base font-black text-slate-900">৳{selectedSettlement.expected.toLocaleString()}</p>
-                </div>
-                <div className="bg-emerald-50 p-3 rounded-xl">
-                  <p className="text-[10px] text-emerald-700 font-bold uppercase">Paid Payout</p>
-                  <p className="text-base font-black text-emerald-700">৳{selectedSettlement.received.toLocaleString()}</p>
-                </div>
-                <div className="bg-red-50 p-3 rounded-xl">
-                  <p className="text-[10px] text-red-700 font-bold uppercase">Shortage</p>
-                  <p className="text-base font-black text-red-700">৳{Math.abs(selectedSettlement.diff).toLocaleString()}</p>
-                </div>
-              </div>
-
-              {selectedSettlement.disputeReason && (
-                <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs">
-                  <p className="font-bold text-red-800">Active Dispute Note:</p>
-                  <p className="text-red-700 mt-0.5">{selectedSettlement.disputeReason}</p>
-                </div>
-              )}
-
-              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Included Orders ({selectedSettlement.parcelsCount} Parcels)</h3>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {[
-                  { id: "PG-102845", cust: "Rahim Uddin", amount: "৳1,250", status: "Delivered & Reconciled" },
-                  { id: "PG-102846", cust: "Karim Hasan", amount: "৳2,500", status: "Deduction Disputed" },
-                  { id: "PG-102848", cust: "Farhan Hossain", amount: "৳3,200", status: "Delivered & Reconciled" },
-                  { id: "PG-102851", cust: "Tania Begum", amount: "৳960", status: "Delivered & Reconciled" },
-                ].map(r => (
-                  <div key={r.id} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 text-xs border border-slate-100">
-                    <div>
-                      <span className="font-mono font-bold text-indigo-600 mr-2">{r.id}</span>
-                      <span className="text-slate-800 font-medium">{r.cust}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900">{r.amount}</span>
-                      <Badge variant={r.status.includes("Disputed") ? "danger" : "success"}>{r.status}</Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 mt-5 pt-3 border-t border-slate-100">
-              <Button variant="secondary" size="sm" onClick={() => setSelectedSettlement(null)}>Close</Button>
-            </div>
-          </Card>
-        </div>
+        <SettlementModal
+          settlement={selectedSettlement}
+          onClose={() => setSelectedSettlement(null)}
+        />
       )}
 
-      {/* Raise Dispute Modal */}
+      {/* Dispute Modal */}
       {disputeSettlement && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/50" onClick={() => setDisputeSettlement(null)} />
-          <Card className="relative z-10 w-full max-w-md p-6 shadow-2xl">
-            {disputeSent ? (
-              <div className="text-center py-6">
-                <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Check size={24} className="text-emerald-500" />
-                </div>
-                <h3 className="font-bold text-slate-900">Dispute Ticket Submitted!</h3>
-                <p className="text-xs text-slate-500 mt-1">Dispute ticket #DSP-{Math.floor(Math.random() * 9000 + 1000)} sent to {disputeSettlement.courier} finance desk.</p>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="font-bold text-slate-900">Raise Courier Payment Dispute</h2>
-                    <p className="text-xs text-slate-500 mt-0.5">{disputeSettlement.courier} · {disputeSettlement.id}</p>
-                  </div>
-                  <button onClick={() => setDisputeSettlement(null)} className="text-slate-400 hover:text-slate-600">
-                    <X size={16} />
-                  </button>
-                </div>
-
-                <form onSubmit={handleRaiseDispute} className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Disputed Shortage Amount (৳)</label>
-                    <input
-                      type="number"
-                      value={disputeAmount}
-                      onChange={e => setDisputeAmount(e.target.value)}
-                      placeholder="2500"
-                      required
-                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-bold text-slate-900 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Reason for Dispute</label>
-                    <textarea
-                      rows={3}
-                      value={disputeReason}
-                      onChange={e => setDisputeReason(e.target.value)}
-                      placeholder="e.g. COD deduction for parcels PG-102846 was uncredited despite verified delivery..."
-                      required
-                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none resize-none"
-                    />
-                  </div>
-
-                  <div className="p-3 bg-amber-50 rounded-lg text-xs text-amber-800">
-                    ParcelGuard will automatically email this dispute statement to {disputeSettlement.courier} merchant support with order IDs.
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                    <Button variant="secondary" size="sm" onClick={() => setDisputeSettlement(null)}>Cancel</Button>
-                    <Button type="submit" variant="danger" size="sm">
-                      Submit Dispute
-                    </Button>
-                  </div>
-                </form>
-              </>
-            )}
-          </Card>
-        </div>
+        <DisputeModal
+          settlement={disputeSettlement}
+          onClose={() => setDisputeSettlement(null)}
+          onRaiseDispute={raiseDispute}
+        />
       )}
     </div>
   );

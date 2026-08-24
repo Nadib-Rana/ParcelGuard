@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Printer, Download, CheckSquare, Square, Search, Filter, QrCode, FileText, CheckCircle2 } from "lucide-react";
-import { useData, type Parcel } from "../context/DataContext";
+import { Printer, Download, CheckSquare, Square, Search } from "lucide-react";
+import { useData } from "../context/DataContext";
 import { Card, Button, Badge } from "../components/ui";
+import ShippingLabel from "../components/labels/ShippingLabel";
 
 type LabelFormat = "4x6" | "100x150" | "a4";
 
@@ -139,16 +140,12 @@ export default function BulkLabels() {
                   </div>
                 );
               })}
-              {filteredParcels.length === 0 && (
-                <div className="p-8 text-center text-sm text-slate-400">No parcels found.</div>
-              )}
             </div>
           </Card>
         </div>
 
         {/* Right Column: Print Controls & Live Preview */}
         <div className="xl:col-span-7 space-y-4">
-          {/* Format selector toolbar */}
           <Card className="p-4 print:hidden">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -172,11 +169,9 @@ export default function BulkLabels() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={handlePrint} disabled={selectedParcels.length === 0}>
-                  <Printer size={13} /> Print Now
-                </Button>
-              </div>
+              <Button size="sm" onClick={handlePrint} disabled={selectedParcels.length === 0}>
+                <Printer size={13} /> Print Now
+              </Button>
             </div>
           </Card>
 
@@ -192,113 +187,7 @@ export default function BulkLabels() {
               </Card>
             ) : (
               selectedParcels.map(parcel => (
-                <div
-                  key={parcel.id}
-                  className={`bg-white border-2 border-slate-800 rounded-2xl overflow-hidden shadow-sm font-mono mx-auto print:shadow-none print:border-2 print:border-black print:page-break-after-always ${
-                    format === "4x6" ? "max-w-md" : format === "100x150" ? "max-w-sm" : "max-w-xl"
-                  }`}
-                >
-                  {/* Label Header */}
-                  <div className="bg-slate-900 text-white px-5 py-3 flex items-center justify-between print:bg-black print:text-white">
-                    <div>
-                      <div className="font-bold text-base tracking-widest uppercase">PARCELGUARD</div>
-                      <div className="text-[10px] text-slate-400 font-sans tracking-wide">Smart Courier Intelligence · Merchant Dispatch</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] text-slate-400 uppercase font-sans">Courier Partner</div>
-                      <div className="font-bold text-sm text-emerald-400 uppercase">{parcel.courier}</div>
-                    </div>
-                  </div>
-
-                  {/* Tracking Barcode Area */}
-                  <div className="px-5 py-4 border-b-2 border-dashed border-slate-300 text-center bg-slate-50/50">
-                    <div className="text-[10px] font-sans font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                      PARCEL TRACKING ID
-                    </div>
-                    <div className="font-bold text-2xl tracking-widest text-slate-900">{parcel.id}</div>
-                    
-                    {/* Simulated High-Res Barcode */}
-                    <div className="flex items-center justify-center gap-0.5 mt-2 h-10 px-4">
-                      {Array.from({ length: 48 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="bg-slate-900"
-                          style={{
-                            width: `${[2, 3, 1, 4, 1, 2, 3, 1, 1, 2, 4, 1][i % 12]}px`,
-                            height: "100%",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Merchant & Customer Address Row */}
-                  <div className="grid grid-cols-2 divide-x-2 divide-dashed divide-slate-300 border-b-2 border-dashed border-slate-300">
-                    {/* From Section */}
-                    <div className="p-4 bg-white">
-                      <div className="text-[10px] text-slate-400 font-sans uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1">
-                        <span>FROM (SENDER)</span>
-                      </div>
-                      <div className="font-bold text-slate-900 text-xs font-sans">{settings.merchantName}</div>
-                      <div className="text-[11px] text-slate-600 font-sans mt-0.5">{settings.businessAddress}</div>
-                      <div className="text-[11px] text-slate-800 font-sans font-semibold mt-1">📞 {settings.phone}</div>
-                    </div>
-
-                    {/* To Section */}
-                    <div className="p-4 bg-white">
-                      <div className="text-[10px] text-indigo-600 font-sans uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1">
-                        <span>TO (RECIPIENT)</span>
-                      </div>
-                      <div className="font-bold text-slate-900 text-xs font-sans">{parcel.customer}</div>
-                      <div className="text-[11px] text-slate-700 font-sans mt-0.5 font-medium">{parcel.address}</div>
-                      <div className="text-[11px] text-slate-900 font-sans font-bold mt-0.5">District: {parcel.district}</div>
-                      <div className="text-[11px] text-slate-900 font-sans font-bold mt-1">📞 {parcel.phone}</div>
-                    </div>
-                  </div>
-
-                  {/* Parcel Details / Items Row */}
-                  <div className="px-5 py-3 border-b-2 border-dashed border-slate-300 bg-slate-50/50 flex items-center justify-between text-xs font-sans">
-                    <div>
-                      <span className="text-slate-500">Item: </span>
-                      <span className="font-semibold text-slate-900">{parcel.product}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Weight: </span>
-                      <span className="font-semibold text-slate-900">{parcel.weight || "500g"}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Date: </span>
-                      <span className="font-semibold text-slate-900">{parcel.date}</span>
-                    </div>
-                  </div>
-
-                  {/* COD Collection & QR Code Footer */}
-                  <div className="p-5 flex items-center justify-between bg-white">
-                    <div>
-                      <div className="text-[10px] text-slate-400 font-sans uppercase font-bold tracking-wide">
-                        CASH ON DELIVERY (COD)
-                      </div>
-                      <div className="text-3xl font-black text-slate-900 mt-0.5">
-                        ৳{parcel.cod.toLocaleString()}
-                      </div>
-                      <div className="text-[10px] text-emerald-700 font-sans font-semibold bg-emerald-50 px-2 py-0.5 rounded mt-1 inline-block border border-emerald-200">
-                        {parcel.advance > 0 ? `Advance Paid: ৳${parcel.advance}` : "Collect full COD amount"}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="p-2 border border-slate-300 rounded-xl bg-white">
-                        <QrCode size={52} className="text-slate-900" />
-                      </div>
-                      <span className="text-[9px] text-slate-400 font-sans">Scan for Live Status</span>
-                    </div>
-                  </div>
-
-                  {/* Bottom Note */}
-                  <div className="bg-slate-100 px-5 py-2 text-center text-[10px] text-slate-500 font-sans border-t border-slate-200">
-                    If undelivered, return to {settings.merchantName} ({settings.phone}) · Powered by ParcelGuard
-                  </div>
-                </div>
+                <ShippingLabel key={parcel.id} parcel={parcel} format={format} settings={settings} />
               ))
             )}
           </div>
