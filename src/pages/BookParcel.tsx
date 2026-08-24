@@ -74,6 +74,7 @@ export default function BookParcel() {
       advance: advancePayment || 0,
       risk: customerRisk,
       status: "Pending Pickup",
+      createdAt: new Date().toISOString(),
       notes: specialInstructions,
       agentName: selectedCourier.name === "Steadfast" ? "Md. Hasan Ali" : "Tanvir Ahmed",
       agentPhone: "01700-123456",

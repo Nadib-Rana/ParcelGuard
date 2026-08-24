@@ -1,32 +1,35 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import type { Parcel, Customer, FraudCheckResult, CourierAccount, Settlement, AppNotification, UserSettings } from "../types";
-import { initialParcels, initialCustomers, initialFraudChecks, initialCouriers, initialSettlements, initialNotifications, initialSettings } from "../data/mockData";
 import { exportParcelsToCSV, exportSettlementsToCSV, downloadSampleOrdersCSV } from "../utils/csv";
 import { evaluatePhoneRisk } from "../utils/risk";
+import {
+  getSavedParcels, getSavedCustomers, getSavedFraudChecks,
+  getSavedCouriers, getSavedSettlements, getSavedNotifications, getSavedSettings,
+} from "./dataStorage";
 
-export * from "../types";
+export type { Parcel, Customer, FraudCheckResult, CourierAccount, Settlement, AppNotification, UserSettings };
 
 interface DataContextType {
   parcels: Parcel[];
   customers: Customer[];
   fraudChecks: FraudCheckResult[];
-  courierAccounts: CourierAccount[];
+  couriers: CourierAccount[];
   settlements: Settlement[];
   notifications: AppNotification[];
   settings: UserSettings;
-  addParcel: (parcelData: Omit<Parcel, "id" | "date" | "createdAt">) => Parcel;
+  addParcel: (parcel: Omit<Parcel, "id" | "date">) => Parcel;
+  bulkAddParcels: (parcelsData: Omit<Parcel, "id" | "date">[]) => void;
   updateParcelStatus: (id: string, status: Parcel["status"]) => void;
-  bulkAddParcels: (parcelsData: Array<Omit<Parcel, "id" | "date" | "createdAt">>) => number;
   checkPhoneRisk: (phone: string, name?: string) => FraudCheckResult;
   toggleWatchlist: (phone: string) => void;
   addCustomerNote: (phone: string, note: string) => void;
-  connectCourier: (name: string, apiKey: string, secretKey: string, merchantId: string, webhook: boolean) => void;
-  syncCourier: (name: string) => Promise<void>;
-  raiseDispute: (settlementId: string, reason: string, customAmount?: number) => void;
+  toggleCourier: (name: string) => void;
+  updateCourierKeys: (name: string, apiKey: string, secretKey?: string) => void;
+  raiseDispute: (id: string, reason: string) => void;
   markNotificationRead: (id: number) => void;
   markAllNotificationsRead: () => void;
   updateSettings: (newSettings: Partial<UserSettings>) => void;
-  exportParcelsCSV: (items?: Parcel[]) => void;
+  exportParcelsCSV: (customList?: Parcel[]) => void;
   exportSettlementsCSV: () => void;
   generateSampleCSV: () => void;
 }
@@ -34,213 +37,71 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | null>(null);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [parcels, setParcels] = useState<Parcel[]>(() => {
-    const saved = localStorage.getItem("pg_parcels_v1");
-    return saved ? JSON.parse(saved) : initialParcels;
-  });
+  const [parcels, setParcels] = useState<Parcel[]>(getSavedParcels);
+  const [customers, setCustomers] = useState<Customer[]>(getSavedCustomers);
+  const [fraudChecks, setFraudChecks] = useState<FraudCheckResult[]>(getSavedFraudChecks);
+  const [couriers, setCouriers] = useState<CourierAccount[]>(getSavedCouriers);
+  const [settlements, setSettlements] = useState<Settlement[]>(getSavedSettlements);
+  const [notifications, setNotifications] = useState<AppNotification[]>(getSavedNotifications);
+  const [settings, setSettings] = useState<UserSettings>(getSavedSettings);
 
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    const saved = localStorage.getItem("pg_customers_v1");
-    return saved ? JSON.parse(saved) : initialCustomers;
-  });
-
-  const [fraudChecks, setFraudChecks] = useState<FraudCheckResult[]>(() => {
-    const saved = localStorage.getItem("pg_fraudchecks_v1");
-    return saved ? JSON.parse(saved) : initialFraudChecks;
-  });
-
-  const [courierAccounts, setCourierAccounts] = useState<CourierAccount[]>(() => {
-    const saved = localStorage.getItem("pg_couriers_v1");
-    return saved ? JSON.parse(saved) : initialCouriers;
-  });
-
-  const [settlements, setSettlements] = useState<Settlement[]>(() => {
-    const saved = localStorage.getItem("pg_settlements_v1");
-    return saved ? JSON.parse(saved) : initialSettlements;
-  });
-
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    const saved = localStorage.getItem("pg_notifs_v1");
-    return saved ? JSON.parse(saved) : initialNotifications;
-  });
-
-  const [settings, setSettings] = useState<UserSettings>(() => {
-    const saved = localStorage.getItem("pg_settings_v1");
-    return saved ? JSON.parse(saved) : initialSettings;
-  });
-
-  // Sync state to localStorage
   useEffect(() => { localStorage.setItem("pg_parcels_v1", JSON.stringify(parcels)); }, [parcels]);
   useEffect(() => { localStorage.setItem("pg_customers_v1", JSON.stringify(customers)); }, [customers]);
   useEffect(() => { localStorage.setItem("pg_fraudchecks_v1", JSON.stringify(fraudChecks)); }, [fraudChecks]);
-  useEffect(() => { localStorage.setItem("pg_couriers_v1", JSON.stringify(courierAccounts)); }, [courierAccounts]);
+  useEffect(() => { localStorage.setItem("pg_couriers_v1", JSON.stringify(couriers)); }, [couriers]);
   useEffect(() => { localStorage.setItem("pg_settlements_v1", JSON.stringify(settlements)); }, [settlements]);
   useEffect(() => { localStorage.setItem("pg_notifs_v1", JSON.stringify(notifications)); }, [notifications]);
   useEffect(() => { localStorage.setItem("pg_settings_v1", JSON.stringify(settings)); }, [settings]);
 
-  const addParcel = (parcelData: Omit<Parcel, "id" | "date" | "createdAt">): Parcel => {
-    const nextNum = parcels.length + 102845;
-    const newId = `PG-${nextNum}`;
-    const now = new Date();
-    const dateStr = now.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-
+  const addParcel = (p: Omit<Parcel, "id" | "date">): Parcel => {
+    const newId = `PG-${Math.floor(1000 + Math.random() * 9000)}`;
     const newParcel: Parcel = {
-      ...parcelData,
+      ...p,
       id: newId,
-      date: dateStr,
-      createdAt: now.toISOString(),
+      date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
     };
-
     setParcels(prev => [newParcel, ...prev]);
-
-    // Update customer history
-    setCustomers(prev => {
-      const idx = prev.findIndex(c => c.phone.replace(/\D/g, "") === parcelData.phone.replace(/\D/g, ""));
-      if (idx !== -1) {
-        const updated = [...prev];
-        updated[idx] = { ...updated[idx], orders: updated[idx].orders + 1, last: dateStr };
-        return updated;
-      }
-      const newCust: Customer = {
-        id: `CUST-${prev.length + 1}`,
-        name: parcelData.customer,
-        phone: parcelData.phone,
-        orders: 1,
-        delivered: 0,
-        returned: 0,
-        rate: "100%",
-        risk: parcelData.risk,
-        last: dateStr,
-        isWatchlist: parcelData.risk === "High Risk",
-      };
-      return [newCust, ...prev];
-    });
-
-    // Send notification
-    setNotifications(prev => [
-      {
-        id: Date.now(),
-        type: "parcel",
-        category: "Parcels",
-        title: "New parcel booked",
-        body: `Parcel ${newId} for ${parcelData.customer} booked with ${parcelData.courier}.`,
-        time: "Just now",
-        read: false,
-      },
-      ...prev,
-    ]);
-
     return newParcel;
+  };
+
+  const bulkAddParcels = (items: Omit<Parcel, "id" | "date">[]) => {
+    const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const formatted = items.map((p, idx) => ({
+      ...p,
+      id: `PG-${Math.floor(1000 + idx + Math.random() * 9000)}`,
+      date: today,
+    }));
+    setParcels(prev => [...formatted, ...prev]);
   };
 
   const updateParcelStatus = (id: string, status: Parcel["status"]) => {
     setParcels(prev => prev.map(p => (p.id === id ? { ...p, status } : p)));
   };
 
-  const bulkAddParcels = (parcelsData: Array<Omit<Parcel, "id" | "date" | "createdAt">>): number => {
-    const baseNum = parcels.length + 102845;
-    const now = new Date();
-    const dateStr = now.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-
-    const newItems: Parcel[] = parcelsData.map((d, i) => ({
-      ...d,
-      id: `PG-${baseNum + i}`,
-      date: dateStr,
-      createdAt: now.toISOString(),
-    }));
-
-    setParcels(prev => [...newItems, ...prev]);
-
-    setNotifications(prev => [
-      {
-        id: Date.now(),
-        type: "parcel",
-        category: "Parcels",
-        title: "Bulk upload booked",
-        body: `Successfully booked ${newItems.length} parcels across couriers.`,
-        time: "Just now",
-        read: false,
-      },
-      ...prev,
-    ]);
-
-    return newItems.length;
-  };
-
-  const checkPhoneRisk = (inputPhone: string, name?: string): FraudCheckResult => {
-    const result = evaluatePhoneRisk(inputPhone, name, customers);
-    setFraudChecks(prev => [result, ...prev.filter(f => f.phone.replace(/\D/g, "") !== inputPhone.replace(/\D/g, "")).slice(0, 8)]);
-    return result;
+  const checkPhoneRisk = (phone: string, name?: string): FraudCheckResult => {
+    const check = evaluatePhoneRisk(phone, name, customers);
+    setFraudChecks(prev => [check, ...prev]);
+    return check;
   };
 
   const toggleWatchlist = (phone: string) => {
-    const clean = phone.replace(/\D/g, "");
-    setCustomers(prev =>
-      prev.map(c => (c.phone.replace(/\D/g, "") === clean ? { ...c, isWatchlist: !c.isWatchlist } : c))
-    );
+    setCustomers(prev => prev.map(c => (c.phone === phone ? { ...c, isWatchlist: !c.isWatchlist } : c)));
   };
 
   const addCustomerNote = (phone: string, note: string) => {
-    const clean = phone.replace(/\D/g, "");
-    setCustomers(prev =>
-      prev.map(c => (c.phone.replace(/\D/g, "") === clean ? { ...c, notes: note } : c))
-    );
+    setCustomers(prev => prev.map(c => (c.phone === phone ? { ...c, notes: note } : c)));
   };
 
-  const connectCourier = (name: string, apiKey: string, secretKey: string, merchantId: string, webhook: boolean) => {
-    setCourierAccounts(prev =>
-      prev.map(c => {
-        if (c.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(c.name.toLowerCase())) {
-          return {
-            ...c,
-            connected: true,
-            apiKey,
-            secretKey,
-            merchantId,
-            webhookEnabled: webhook,
-            balance: c.balance > 0 ? c.balance : 5000,
-            sync: "Just now",
-          };
-        }
-        return c;
-      })
-    );
+  const toggleCourier = (name: string) => {
+    setCouriers(prev => prev.map(c => (c.name === name ? { ...c, connected: !c.connected } : c)));
   };
 
-  const syncCourier = async (name: string) => {
-    await new Promise(r => setTimeout(r, 1000));
-    setCourierAccounts(prev =>
-      prev.map(c => (c.name === name ? { ...c, sync: "Just now", balance: c.balance + Math.floor(Math.random() * 2000) } : c))
-    );
+  const updateCourierKeys = (name: string, apiKey: string, secretKey?: string) => {
+    setCouriers(prev => prev.map(c => (c.name === name ? { ...c, apiKey, secretKey, connected: true } : c)));
   };
 
-  const raiseDispute = (settlementId: string, reason: string, customAmount?: number) => {
-    setSettlements(prev =>
-      prev.map(s => {
-        if (s.id === settlementId) {
-          return {
-            ...s,
-            status: "Disputed",
-            disputeReason: reason,
-            diff: customAmount ? -Math.abs(customAmount) : s.diff !== 0 ? s.diff : -2500,
-          };
-        }
-        return s;
-      })
-    );
-
-    setNotifications(prev => [
-      {
-        id: Date.now(),
-        type: "payment",
-        category: "Payments",
-        title: `Dispute opened for ${settlementId}`,
-        body: `Dispute logged with courier for ${settlementId}.`,
-        time: "Just now",
-        read: false,
-      },
-      ...prev,
-    ]);
+  const raiseDispute = (id: string, reason: string) => {
+    setSettlements(prev => prev.map(s => (s.id === id ? { ...s, status: "Disputed", disputeReason: reason } : s)));
   };
 
   const markNotificationRead = (id: number) => {
@@ -258,26 +119,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return (
     <DataContext.Provider
       value={{
-        parcels,
-        customers,
-        fraudChecks,
-        courierAccounts,
-        settlements,
-        notifications,
-        settings,
-        addParcel,
-        updateParcelStatus,
-        bulkAddParcels,
-        checkPhoneRisk,
-        toggleWatchlist,
-        addCustomerNote,
-        connectCourier,
-        syncCourier,
-        raiseDispute,
-        markNotificationRead,
-        markAllNotificationsRead,
-        updateSettings,
-        exportParcelsCSV: (items) => exportParcelsToCSV(items || parcels),
+        parcels, customers, fraudChecks, couriers, settlements, notifications, settings,
+        addParcel, bulkAddParcels, updateParcelStatus, checkPhoneRisk, toggleWatchlist, addCustomerNote,
+        toggleCourier, updateCourierKeys, raiseDispute, markNotificationRead, markAllNotificationsRead, updateSettings,
+        exportParcelsCSV: (customList?: Parcel[]) => exportParcelsToCSV(customList ?? parcels),
         exportSettlementsCSV: () => exportSettlementsToCSV(settlements),
         generateSampleCSV: downloadSampleOrdersCSV,
       }}
