@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Package, TrendingUp, AlertTriangle, Wallet, MoreHorizontal, Eye, MapPin, Download, Import } from "lucide-react";
+import { Package, TrendingUp, AlertTriangle, Wallet, Eye, MapPin, Download, Import, Plus } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useNavigate, NavLink } from "react-router-dom";
+import { useData } from "../context/DataContext";
 import { Card, StatCard, RiskBadge, StatusBadge, Button, Badge } from "../components/ui";
-import { NavLink } from "react-router-dom";
 
 const chartData = [
   { day: "Mon", created: 42, transit: 35, delivered: 28, returned: 5 },
@@ -14,43 +15,45 @@ const chartData = [
   { day: "Sun", created: 64, transit: 53, delivered: 46, returned: 5 },
 ];
 
-const parcels = [
-  { id: "PG-102845", customer: "Rahim Uddin", phone: "01711-234567", courier: "Steadfast", cod: "৳1,250", risk: "Safe" as const, status: "Delivered", date: "24 Aug 2026" },
-  { id: "PG-102846", customer: "Karim Hasan", phone: "01812-345678", courier: "Pathao", cod: "৳2,500", risk: "High Risk" as const, status: "Returned", date: "24 Aug 2026" },
-  { id: "PG-102847", customer: "Nasrin Akter", phone: "01913-456789", courier: "RedX", cod: "৳850", risk: "Safe" as const, status: "In Transit", date: "23 Aug 2026" },
-  { id: "PG-102848", customer: "Farhan Hossain", phone: "01614-567890", courier: "Steadfast", cod: "৳3,200", risk: "Moderate" as const, status: "Pending Pickup", date: "23 Aug 2026" },
-  { id: "PG-102849", customer: "Sadia Islam", phone: "01515-678901", courier: "Pathao", cod: "৳1,800", risk: "Safe" as const, status: "Out for Delivery", date: "22 Aug 2026" },
-  { id: "PG-102850", customer: "Jahangir Alam", phone: "01716-789012", courier: "RedX", cod: "৳4,500", risk: "High Risk" as const, status: "Returned", date: "22 Aug 2026" },
-];
-
-const statusDistribution = [
-  { label: "Delivered", count: 982, pct: 78.7, color: "bg-emerald-500" },
-  { label: "In Transit", count: 124, pct: 9.9, color: "bg-blue-500" },
-  { label: "Out for Delivery", count: 38, pct: 3.0, color: "bg-indigo-500" },
-  { label: "Pending Pickup", count: 18, pct: 1.4, color: "bg-amber-500" },
-  { label: "Returned", count: 68, pct: 5.4, color: "bg-red-500" },
-  { label: "Cancelled", count: 18, pct: 1.6, color: "bg-slate-300" },
-];
-
 export default function Dashboard() {
+  const { parcels, settlements, exportParcelsCSV, settings } = useData();
+  const navigate = useNavigate();
   const [tab, setTab] = useState("7 Days");
   const tabs = ["7 Days", "30 Days", "3 Months"];
+
+  const totalParcelsCount = 1248 + parcels.length - 8;
+  const deliveredCount = parcels.filter(p => p.status === "Delivered").length;
+  const returnedCount = parcels.filter(p => p.status === "Returned").length;
+  const deliveredPct = ((deliveredCount / Math.max(1, parcels.length)) * 100).toFixed(1);
+
+  const pendingCod = settlements.filter(s => s.status === "Pending").reduce((acc, s) => acc + s.expected, 245600);
+
+  const statuses = [
+    { label: "Delivered", count: 982 + (deliveredCount - 2), color: "bg-emerald-500" },
+    { label: "In Transit", count: 124 + parcels.filter(p => p.status === "In Transit").length - 1, color: "bg-blue-500" },
+    { label: "Out for Delivery", count: 38 + parcels.filter(p => p.status === "Out for Delivery").length - 1, color: "bg-indigo-500" },
+    { label: "Pending Pickup", count: 18 + parcels.filter(p => p.status === "Pending Pickup").length - 1, color: "bg-amber-500" },
+    { label: "Returned", count: 68 + (returnedCount - 2), color: "bg-red-500" },
+    { label: "Cancelled", count: 18, color: "bg-slate-300" },
+  ];
+
+  const totalStatusCount = statuses.reduce((acc, s) => acc + s.count, 0);
 
   return (
     <div className="p-6 space-y-6 max-w-screen-2xl">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Good morning, Merchant 👋</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Here's what's happening with your parcels today.</p>
+          <h1 className="text-xl font-bold text-slate-900">Good morning, {settings.merchantName} 👋</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Here's what's happening with your parcels today across all couriers.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm">
-            <Import size={13} /> Import Orders
+          <Button variant="secondary" size="sm" onClick={() => navigate("/bulk-upload")}>
+            <Import size={13} /> Import CSV Orders
           </Button>
           <NavLink to="/book-parcel">
             <Button size="sm">
-              <span>+ Book Parcel</span>
+              <Plus size={13} /> Book Parcel
             </Button>
           </NavLink>
         </div>
@@ -61,28 +64,28 @@ export default function Dashboard() {
         <StatCard
           icon={<Package size={18} />}
           label="Total Parcels"
-          value="1,248"
-          trend="↑ 12.5% vs last month"
+          value={totalParcelsCount.toLocaleString()}
+          trend="↑ 14.2% vs last month"
         />
         <StatCard
           icon={<TrendingUp size={18} />}
           label="Delivered Successfully"
-          value="982"
-          sub="78.7% success rate"
-          subColor="text-emerald-600"
+          value={`${(982 + deliveredCount - 2).toLocaleString()}`}
+          sub={`${deliveredPct}% delivery success rate`}
+          subColor="text-emerald-600 font-semibold"
         />
         <StatCard
           icon={<AlertTriangle size={18} />}
           label="At Risk / Returned"
-          value="86"
+          value={`${86 + returnedCount - 2}`}
           sub="Potential loss: ৳18,450"
-          subColor="text-red-500"
+          subColor="text-red-500 font-semibold"
         />
         <StatCard
           icon={<Wallet size={18} />}
-          label="Pending COD"
-          value="৳2,45,600"
-          sub="Expected settlement this week"
+          label="Pending COD Settlements"
+          value={`৳${pendingCod.toLocaleString()}`}
+          sub="Expected payout this week"
         />
       </div>
 
@@ -92,15 +95,17 @@ export default function Dashboard() {
         <Card className="xl:col-span-2 p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-semibold text-slate-900">Parcel Performance</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Delivery trends over time</p>
+              <h2 className="font-bold text-slate-900 text-sm">Parcel Delivery Performance</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Live shipping volume and delivery conversion trends</p>
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg">
               {tabs.map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${tab === t ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                    tab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  }`}
                 >
                   {t}
                 </button>
@@ -124,22 +129,25 @@ export default function Dashboard() {
 
         {/* Status distribution */}
         <Card className="p-5">
-          <h2 className="font-semibold text-slate-900 mb-4">Delivery Status</h2>
+          <h2 className="font-bold text-slate-900 text-sm mb-4">Delivery Status Breakdown</h2>
           <div className="space-y-3">
-            {statusDistribution.map(s => (
-              <div key={s.label}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-slate-700">{s.label}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500">{s.count}</span>
-                    <span className="text-xs font-semibold text-slate-700 w-8 text-right">{s.pct}%</span>
+            {statuses.map(s => {
+              const pct = ((s.count / totalStatusCount) * 100).toFixed(1);
+              return (
+                <div key={s.label}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-slate-700">{s.label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500">{s.count}</span>
+                      <span className="text-xs font-bold text-slate-700 w-10 text-right">{pct}%</span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full ${s.color} rounded-full`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
-                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full ${s.color} rounded-full`} style={{ width: `${s.pct}%` }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       </div>
@@ -147,50 +155,58 @@ export default function Dashboard() {
       {/* Recent Parcels */}
       <Card>
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-900">Recent Parcels</h2>
+          <div>
+            <h2 className="font-bold text-slate-900 text-sm">Recent Parcels & Orders</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Showing latest booked parcels with real-time status</p>
+          </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm">
-              <Download size={13} /> Export
+            <Button variant="ghost" size="sm" onClick={() => exportParcelsCSV()}>
+              <Download size={13} /> Export CSV
             </Button>
             <NavLink to="/parcels">
-              <Button variant="secondary" size="sm">View All</Button>
+              <Button variant="secondary" size="sm">View All ({parcels.length})</Button>
             </NavLink>
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100">
-                {["Tracking ID", "Customer", "Phone", "Courier", "COD", "Risk", "Status", "Date", "Action"].map(h => (
+              <tr className="border-b border-slate-100 bg-slate-50/50">
+                {["Tracking ID", "Customer", "Phone", "Courier", "COD Amount", "Risk Assessment", "Status", "Date", "Action"].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {parcels.map((p, i) => (
-                <tr key={p.id} className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${i === parcels.length - 1 ? "border-none" : ""}`}>
+              {parcels.slice(0, 6).map((p, i) => (
+                <tr key={p.id} className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${i === 5 ? "border-none" : ""}`}>
                   <td className="px-4 py-3">
-                    <span className="text-xs font-mono font-semibold text-indigo-600">{p.id}</span>
+                    <span className="text-xs font-mono font-bold text-indigo-600">{p.id}</span>
                   </td>
-                  <td className="px-4 py-3 text-sm font-medium text-slate-900 whitespace-nowrap">{p.customer}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-slate-900 whitespace-nowrap">{p.customer}</td>
                   <td className="px-4 py-3 text-xs text-slate-500 font-mono">{p.phone}</td>
                   <td className="px-4 py-3">
                     <Badge variant="indigo">{p.courier}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-sm font-semibold text-slate-900">{p.cod}</td>
+                  <td className="px-4 py-3 text-sm font-bold text-slate-900">৳{p.cod.toLocaleString()}</td>
                   <td className="px-4 py-3"><RiskBadge level={p.risk} /></td>
                   <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                   <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{p.date}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600">
+                      <button
+                        onClick={() => navigate(`/parcels`)}
+                        className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-indigo-600"
+                        title="View Details"
+                      >
                         <Eye size={13} />
                       </button>
-                      <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600">
+                      <button
+                        onClick={() => navigate(`/tracking?id=${p.id}`)}
+                        className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-indigo-600"
+                        title="Live Tracking"
+                      >
                         <MapPin size={13} />
-                      </button>
-                      <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-slate-600">
-                        <MoreHorizontal size={13} />
                       </button>
                     </div>
                   </td>
@@ -198,17 +214,6 @@ export default function Dashboard() {
               ))}
             </tbody>
           </table>
-        </div>
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100">
-          <span className="text-xs text-slate-500">Showing 6 of 1,248 parcels</span>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3, "...", 208].map((p, i) => (
-              <button key={i} className={`w-7 h-7 text-xs rounded-lg font-medium transition-colors ${p === 1 ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
-                {p}
-              </button>
-            ))}
-          </div>
         </div>
       </Card>
     </div>
