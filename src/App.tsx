@@ -20,6 +20,15 @@ import Subscription from "./pages/Subscription";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
 
+// Super Admin Console Pages
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminMerchants from "./pages/admin/AdminMerchants";
+import AdminCouriers from "./pages/admin/AdminCouriers";
+import AdminBlacklist from "./pages/admin/AdminBlacklist";
+import AdminFinance from "./pages/admin/AdminFinance";
+import AdminBroadcasts from "./pages/admin/AdminBroadcasts";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -47,6 +56,16 @@ export default function App() {
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />
             <Route path="help" element={<Help />} />
+          </Route>
+
+          {/* Super Admin Console routes */}
+          <Route path="admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="merchants" element={<AdminMerchants />} />
+            <Route path="couriers" element={<AdminCouriers />} />
+            <Route path="blacklist" element={<AdminBlacklist />} />
+            <Route path="finance" element={<AdminFinance />} />
+            <Route path="broadcasts" element={<AdminBroadcasts />} />
           </Route>
         </Route>
 
