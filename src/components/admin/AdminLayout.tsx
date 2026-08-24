@@ -3,9 +3,10 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   ShieldAlert, LayoutDashboard, Building2, Activity,
   Ban, CircleDollarSign, Megaphone, ArrowLeftRight,
-  Menu, X, ShieldCheck, AlertTriangle
+  Menu, X, ShieldCheck, AlertTriangle, LogOut
 } from "lucide-react";
 import { useAdmin } from "../../context/AdminContext";
+import { useAuth } from "../../context/AuthContext";
 
 const adminNavItems = [
   { path: "/admin", icon: LayoutDashboard, label: "Platform Overview" },
@@ -20,12 +21,17 @@ export default function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const { maintenanceMode } = useAdmin();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
       {/* Super Admin Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0">
-        {/* Brand */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800 bg-slate-900/50">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-red-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
             <ShieldAlert size={18} className="text-white" />
@@ -39,7 +45,6 @@ export default function AdminLayout() {
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {adminNavItems.map(({ path, icon: Icon, label }) => (
             <NavLink
@@ -60,8 +65,7 @@ export default function AdminLayout() {
           ))}
         </nav>
 
-        {/* Portal Switcher Footer */}
-        <div className="p-3 border-t border-slate-800 bg-slate-900/80">
+        <div className="p-3 border-t border-slate-800 bg-slate-900/80 space-y-2">
           <button
             onClick={() => navigate("/")}
             className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2.5 rounded-xl border border-slate-700 transition-colors"
@@ -124,7 +128,6 @@ export default function AdminLayout() {
 
       {/* Main Layout Area */}
       <div className="flex-1 flex flex-col overflow-hidden bg-slate-900/60">
-        {/* Admin Top Header */}
         <header className="bg-slate-900 border-b border-slate-800 px-5 h-14 flex items-center justify-between flex-shrink-0 z-30">
           <div className="flex items-center gap-3">
             <button className="lg:hidden text-slate-400 p-1" onClick={() => setMobileOpen(true)}>
@@ -143,17 +146,15 @@ export default function AdminLayout() {
                 <AlertTriangle size={13} /> Maintenance Mode ACTIVE
               </div>
             )}
-            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5">
-              <ShieldCheck size={14} className="text-emerald-400" />
-              <span className="text-xs font-bold text-slate-300">System Healthy</span>
-            </div>
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-amber-500 flex items-center justify-center text-white font-black text-xs shadow-sm">
-              SA
-            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
+            >
+              <LogOut size={13} /> Sign Out
+            </button>
           </div>
         </header>
 
-        {/* View content */}
         <main className="flex-1 overflow-y-auto bg-slate-950 p-6">
           <Outlet />
         </main>

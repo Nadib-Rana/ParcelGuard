@@ -1,38 +1,83 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+
+export interface AuthUser {
+  name: string;
+  email: string;
+  phone?: string;
+  role: "merchant" | "admin";
+}
 
 interface AuthContextValue {
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (name: string, email: string, password: string, phone: string) => Promise<void>;
+  user: AuthUser | null;
+  login: (email: string, password: string) => Promise<AuthUser>;
+  signup: (name: string, email: string, password: string, phone: string) => Promise<AuthUser>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    () => localStorage.getItem("pg_auth") === "true"
-  );
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const saved = localStorage.getItem("pg_user_v1");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return null;
+      }
+    }
+    return localStorage.getItem("pg_auth") === "true"
+      ? { name: "Demo Merchant", email: "demo@parcelguard.com", role: "merchant" }
+      : null;
+  });
 
-  const login = async (_email: string, _password: string) => {
-    await new Promise(r => setTimeout(r, 900));
-    localStorage.setItem("pg_auth", "true");
-    setIsAuthenticated(true);
+  const isAuthenticated = !!user;
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("pg_auth", "true");
+      localStorage.setItem("pg_user_v1", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("pg_auth");
+      localStorage.removeItem("pg_user_v1");
+    }
+  }, [user]);
+
+  const login = async (email: string, _password: string): Promise<AuthUser> => {
+    await new Promise(r => setTimeout(r, 600));
+
+    const isAdmin = email.toLowerCase().includes("admin");
+    const loggedUser: AuthUser = {
+      name: isAdmin ? "Super Admin" : email.split("@")[0].replace(".", " ").toUpperCase(),
+      email,
+      role: isAdmin ? "admin" : "merchant",
+    };
+
+    setUser(loggedUser);
+    return loggedUser;
   };
 
-  const signup = async (_name: string, _email: string, _password: string, _phone: string) => {
-    await new Promise(r => setTimeout(r, 1100));
-    localStorage.setItem("pg_auth", "true");
-    setIsAuthenticated(true);
+  const signup = async (name: string, email: string, _password: string, phone: string): Promise<AuthUser> => {
+    await new Promise(r => setTimeout(r, 800));
+
+    const newUser: AuthUser = {
+      name,
+      email,
+      phone,
+      role: "merchant",
+    };
+
+    setUser(newUser);
+    return newUser;
   };
 
   const logout = () => {
-    localStorage.removeItem("pg_auth");
-    setIsAuthenticated(false);
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, signup, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Shield, Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -15,8 +15,14 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { signup } = useAuth();
+  const { signup, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -32,7 +38,7 @@ export default function Signup() {
     setLoading(true);
     try {
       await signup(name, email, password, phone);
-      navigate("/");
+      navigate("/", { replace: true });
     } catch {
       setError("Failed to create account. Please try again.");
     } finally {
